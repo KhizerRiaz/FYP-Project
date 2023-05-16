@@ -8,6 +8,7 @@ import AlertDialog from "../../Components/DialogueBox/AlertDialogue";
 import socketio from "socket.io-client";
 import Webcam from 'react-webcam';
 import moment from "moment/moment";
+import Useauth from "../../Routes/Auth";
 
 const Test = () => {
 
@@ -19,6 +20,7 @@ const Test = () => {
   const [question,setquestions] = useState('');
   const [loading , setloading] = useState(false);
   const [answers,setanswers] = useState([]);
+  const webcamRef = useRef(null);
   const time = moment();
 
   const refAnswers = useRef();
@@ -40,7 +42,10 @@ const Test = () => {
   resizesRef.current = TabResizing;
 
 
-
+  const handleUserMedia = () => {
+    console.log("Reference Assigned streaming started")
+    startStream()
+  }
 
   const handleBlur = () => {
     setnumTabChanges(numTabChanges+1)
@@ -65,10 +70,6 @@ const Test = () => {
     };
   });
 
-
-
-  const webcamRef = useRef(null);
-
   const videoConstraints = {
     width: 550,
     height: 550,
@@ -78,12 +79,14 @@ const Test = () => {
     autoConnect: false,
   });  
 
-  const sendData = async (data,test_state, gaze_data, face_encoding) => {
+  
+  const sendData = async (data,test_state, identification_data , gaze_data, face_encoding, ) => {
 
 
 
     console.log('send data : ', end)  
       socket.emit("identification", {
+       identification_payload: identification_data,
        id: candidate.cnic,
        data: data,
        message : test_state,
@@ -94,7 +97,7 @@ const Test = () => {
    };
     
 
-   socket.on("SEND_LIVE_STREAM", async(identification_result , gaze_result , inference_result , message, gaze_data , face_encoding) => {
+   socket.on("SEND_LIVE_STREAM", async(identification_result , identification_data, gaze_result , inference_result , message, gaze_data , face_encoding) => {
         // console.log("Result : ",result) 
         console.log(gaze_data);
         var invi = invigilance;
@@ -108,7 +111,7 @@ const Test = () => {
           console.log("Invigilance : ")
           console.log(invigilance)
 
-          updateDatabase();
+          await updateDatabase();
           socket.disconnect()
         }
 
@@ -120,7 +123,7 @@ const Test = () => {
         im = im.substring(23, im.length);
         // socket.emit("identification" , picture)
         console.log("SAMMAM SAYS "+end.current); 
-        await sendData(im, end.current, gaze_data, face_encoding)
+        await sendData(im, end.current, identification_data ,gaze_data, face_encoding)
         
         // console.log(result1)
        });
@@ -144,8 +147,14 @@ const Test = () => {
 			left_movement : 0,
 			right_movement : 0,
 			no_movement : 0  
-		  
 		} 
+
+    let identification_payload = {
+      'total_snapshots' : 0,
+      'no_face' : 0,
+      'correct_face' : 0,
+      'wrong_face' : 0
+      }
 
   try {
     socket.connect();
@@ -153,6 +162,8 @@ const Test = () => {
         let im = webcamRef.current.getScreenshot();
         im = im.substring(23, im.length);
         socket.emit("identification" , {
+
+          identification_payload,
           data: im,
           id: candidate.cnic,
           message: end,                              // assign state
@@ -227,21 +238,20 @@ const updateDatabase = async () => {
   }
 
 }
-
+const authenticate= Useauth();
 const submitHandler = async () => {
-  
-  console.log(answers)
   end.current = 'TEST ENDED';
-  // try {
-  //   axios.post('http://localhost:5000/api/report/UpdateReport', {question , answers , testid:test.test_id , canid:candidate.cnic}  )
-  //   .then((response)=>{
-  //     console.log(response.data.message);
-  //     navigate('/thankyou');
-  //   });
-  //  }
-  //  catch (error) {
-  //      console.log(error.response);
-  //  }
+  try {
+    axios.post('http://localhost:5000/api/report/UpdateReport', {question , answers , testid:test.test_id , canid:candidate.cnic}  )
+    .then((response)=>{
+      console.log(response.data.message);
+      authenticate.setcanauth(false)
+      navigate('/thankyou');
+    });
+   }
+   catch (error) {
+       console.log(error.response);
+   }
 }
 const changeHandler = (event, qid) => {
   var r = answers.find(item => item.id === qid)
@@ -262,16 +272,18 @@ const renderer = ({ hours, minutes, seconds, completed }) => {
     setdisable(true);
     setopen(true);
   } else {
-    return <span style={{fontsize:'50px', fontweight:'bold'}}>{hours}:{minutes}:{seconds}</span>;
+    return  <div style={{ fontSize: '25px' }}>
+    Time Remaining: {hours}h {minutes}m {seconds}s
+  </div>
   }
 };
 
   return (
     <Grid container justifyContent="Center" sx={{padding:'30px'}}>
-        <Webcam audio={false}  height={300} ref={webcamRef} screenshotFormat="image/jpeg" width={300} videoConstraints={videoConstraints}/>
+        <Webcam audio={false}   ref={webcamRef} width={0} height={0} screenshotFormat="image/jpeg"  videoConstraints={videoConstraints} onUserMedia={handleUserMedia}/>
         {open && <AlertDialog open={open} setopen={()=>{setopen(false)}} submit={()=>{submitHandler()}} timeup={disable}/>}
         <Grid container justifyContent="center" sx={{padding:'30px'}} >
-        <button onClick={startStream}/>
+        {/* <button onClick={startStream}/> */}
          {loading && <Countdown date={Date.now()+3000000} renderer={renderer} /> }
         </Grid>
         <Grid container sx={{borderRadius:10,padding:'50px',borderStyle:'solid',borderImage:'linear-gradient(to right bottom, #00264D, #02386E , #00498D) 1',borderWidth:'5px'}}>

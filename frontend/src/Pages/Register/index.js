@@ -4,11 +4,10 @@ import examinee from '../../Images/examinee.svg';
 import {useNavigate} from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-
-
-
+import Useauth from '../../Routes/Auth';
 
 const Register = () => {
+    const authenticate= Useauth();
     const navigate = useNavigate();
     const queryParams = new URLSearchParams(window.location.search);
     const [registerdata , setregisterdata] = useState({cnic:0 , name: '' , email: '' , contact: '' , dob:'' , city:'' , gender:''});
@@ -37,6 +36,7 @@ const Register = () => {
             console.log(response.data.message);
             if (response.data.message === 'Success') {
                 localStorage.setItem('Candidatedetails', JSON.stringify(registerdata));
+                authenticate.setcanauth(true);
                 navigate('/upload');
             }
         }). catch((err)=>{
@@ -144,7 +144,8 @@ console.log(testid)
      <Grid container alignItems="center" justifyContent='center' style={{marginBottom:'25px'}}>
         <Box style={{marginRight:'15px' , textAlign:'center' }}>
             <img src={examiner} style={{ height: '10rem' , width: '7rem' ,display:'block'  , borderRadius:'100px'}}/>
-            <Button onClick={()=>{
+            <Button variant='outlined' sx={{ backgroundColor: registerdata.gender == 'F' ? '#00264D' : 'white', color: registerdata.gender == 'F' ? 'white' : '#00264D' }}
+                onClick={()=>{
                 setregisterdata(prevState=>({
                     ...prevState,
                     gender: 'F'
@@ -153,7 +154,7 @@ console.log(testid)
         </Box>
         <Box style={{marginRight:'15px' , textAlign:'center'}}>
         <img src={examinee} style={{ height: '10rem' , width: '7rem' , display:'block' , borderRadius:'100px'}}/>
-            <Button onClick={()=>{
+            <Button variant='outlined' sx={{ backgroundColor: registerdata.gender == 'M' ? '#00264D' : 'white', color: registerdata.gender == 'M' ? 'white' : '#00264D' }} onClick={()=>{
                 setregisterdata(prevState=>({
                     ...prevState,
                     gender: 'M'
